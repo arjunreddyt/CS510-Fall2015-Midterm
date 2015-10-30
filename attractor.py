@@ -4,7 +4,6 @@ from mpl_toolkits.mplot3d import Axes3D
 
 class Attractor(object):
     def __init__(self, s=10, p=28., b=8.0/3.0, start=0.0, end=80.0, points=10000):
-        self.arbitrary = 10000
         self.params = np.array([s, p, b])
         self.points = points
         self.end = end
