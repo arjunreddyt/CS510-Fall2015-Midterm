@@ -25,7 +25,7 @@ class Attractor(object):
         k1[0] = self.params[0] * (nparray[1] - nparray[0])
         k1[1] = nparray[0] * (self.params[1] - nparray[2]) - nparray[1]
         k1[2] = (nparray[0] * nparray[1]) - (self.params[2] * nparray[2])
-        
+
         # change over time
         k1[0] = nparray[0] + (k1[0] * dt)
         k1[1] = nparray[1] + (k1[1] * dt)
@@ -112,17 +112,17 @@ class Attractor(object):
         """Generates 2d plot of z(t)."""
         plot.plot(self.solution['t'], self.solution['z'])
         plot.show()
-    
+
     def plotxy(self):
         """Generates 2d plot of x(t)."""
         plot.plot(self.solution['x'], self.solution['y'])
         plot.show()
-    
+
     def plotyz(self):
         """Generates 2d plot of x(t)."""
         plot.plot(self.solution['y'], self.solution['z'])
         plot.show()
-    
+
     def plotzx(self):
         """Generates 2d plot of x(t)."""
         plot.plot(self.solution['z'], self.solution['x'])
