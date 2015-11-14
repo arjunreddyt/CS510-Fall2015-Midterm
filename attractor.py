@@ -1,8 +1,10 @@
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plot
 from mpl_toolkits.mplot3d import Axes3D
 
 class Attractor(object):
+    " Class Attractor calculates Euler, 2nd and 4th order Runga-Kutta ODEs"
     def __init__(self, s=10, p=28., b=8.0/3.0, start=0.0, end=80.0, points=10000):
         self.params = np.array([s, p, b])
         self.points = points
@@ -12,17 +14,22 @@ class Attractor(object):
         self.dt = (self.end - self.start) / self.points
         self.solution = None
 
-    def euler(self, nparray=np.array([])):
+    def euler(self, nparray=np.array([]), dt=None):
         """Calculates the simplest euler increment.
 
         @param: nparray: a numpy array containing values [x,y,z]
         @return: a numpy array form of the simplest euler increment
         """
-        # print arbitrary
-        k1 = [0] * 3
+        dt = dt or self.dt
+        k1 = [0.0] * 3
         k1[0] = self.params[0] * (nparray[1] - nparray[0])
         k1[1] = nparray[0] * (self.params[1] - nparray[2]) - nparray[1]
         k1[2] = (nparray[0] * nparray[1]) - (self.params[2] * nparray[2])
+        
+        # change over time
+        k1[0] = nparray[0] + (k1[0] * dt)
+        k1[1] = nparray[1] + (k1[1] * dt)
+        k1[2] = nparray[2] + (k1[2] * dt)
 
         return np.array(k1)
 
@@ -33,19 +40,13 @@ class Attractor(object):
         @return: k2, a numpy array form of the 2nd order Runge-kutta increment
         """
         k1 = self.euler(nparray)
-        k2 = [0] * 3
+        k2 = [0.0] * 3
 
         # change over time
-        xt = nparray[0] + k1[0] * self.dt / 2
-        yt = nparray[1] + k1[1] * self.dt / 2
-        zt = nparray[2] + k1[2] * self.dt / 2
-        nparray2 = np.array([xt, yt, zt])
-
-        k2[0] = self.params[0] * (nparray2[1] - nparray2[0])
-        k2[1] = nparray2[0] * (self.params[1] - nparray[2]) - nparray[1]
-        k2[2] = nparray2[0] * nparray2[1] - self.params[2] * nparray2[2]
-
-        return k2
+        k2[0] = nparray[0] + (k1[0] * self.dt / 2)
+        k2[1] = nparray[1] + (k1[1] * self.dt / 2)
+        k2[2] = nparray[2] + (k1[2] * self.dt / 2)
+        return self.euler(np.array(k2), dt=self.dt/2)
 
     def rk4(self, nparray=np.array([])):
         """Calculates the 4th order Runge-kutta increment.
@@ -54,30 +55,21 @@ class Attractor(object):
         @return: k4, a numpy array form of the 4th order Runge-kutta increment
         """
         k2 = self.rk2(nparray)
-        k3 = [0] * 3
-        k4 = [0] * 3
+        k3 = [0.0] * 3
+        k4 = [0.0] * 3
 
         # change over time
-        xt = nparray[0] + k2[0] * self.dt / 2
-        yt = nparray[1] + k2[1] * self.dt / 2
-        zt = nparray[2] + k2[2] * self.dt / 2
-        nparray2 = np.array([xt, yt, zt])
-
-        k3[0] = self.params[0] * (nparray2[1] - nparray2[0])
-        k3[1] = (nparray2[0] * (self.params[1] - nparray2[2]) - nparray2[1])
-        k3[2] = nparray2[0] * nparray2[1] - self.params[2] * nparray2[2]
+        k3[0] = nparray[0] + k2[0] * self.dt / 2
+        k3[1] = nparray[1] + k2[1] * self.dt / 2
+        k3[2] = nparray[2] + k2[2] * self.dt / 2
+        k3 = self.euler(np.array(k3), dt=self.dt/2)
 
         # change over time
-        xt = nparray[0] + k3[0] * self.dt
-        yt = nparray[1] + k3[1] * self.dt
-        zt = nparray[2] + k3[2] * self.dt
-        nparray2 = np.array([xt, yt, zt])
+        k4[0] = nparray[0] + k3[0] * self.dt
+        k4[1] = nparray[1] + k3[1] * self.dt
+        k4[2] = nparray[2] + k3[2] * self.dt
 
-        k4[0] = self.params[0] * (nparray2[1] - nparray2[0])
-        k4[1] = (nparray2[0] * (self.params[1] - nparray2[2]) - nparray2[1])
-        k4[2] = nparray2[0] * nparray2[1] - self.params[2] * nparray2[2]
-
-        return k4
+        return self.euler(np.array(k4))
 
     def evolve(self, r0=np.array([0.1,0.0,0.0]), order=4):
         """Generates a pandas DataFrame wrt order specified.
@@ -85,41 +77,21 @@ class Attractor(object):
         @param: r0:  a numpy array containing values [x0,y0,z0]
         @return: self.solution, a pandas DataFrame object
         """
-        x=np.zeros(self.points+1)
-        y=np.zeros(self.points+1)
-        z=np.zeros(self.points+1)
-        x[0] = r0[0]
-        y[0] = r0[1]
-        z[0] = r0[2]
-        i=1
-
+        result = np.array([0, r0[0], r0[1], r0[2]])
+        inc = r0;
         if order == 1:
-            while i < self.points+1:
-                inc = self.euler(np.array([x[i-1], y[i-1], z[i-1]]))
-                x[i] = x[i - 1] + inc[0] * self.dt
-                y[i] = y[i - 1] + inc[1] * self.dt
-                z[i] = z[i - 1] + inc[2] * self.dt
-                i += 1
-
+            for t in self.t:
+                inc = self.euler(inc)
+                result = np.vstack((result,np.append(t, inc)))
         elif order == 2:
-            while i < self.points+1:
-                inc = self.rk2(np.array([x[i-1], y[i-1], z[i-1]]))
-                x[i] = x[i - 1] + 2*inc[0] * self.dt
-                y[i] = y[i - 1] + 2*inc[1] * self.dt
-                z[i] = z[i - 1] + 2*inc[2] * self.dt
-                i += 1
-
-        elif order==4:
-            while i < self.points+1:
-                inc = self.rk4(np.array([x[i-1], y[i-1], z[i-1]]))
-                x[i] = x[i - 1] + inc[0] * self.dt
-                y[i] = y[i - 1] + inc[1] * self.dt
-                z[i] = z[i - 1] + inc[2] * self.dt
-                i += 1
-
-        self.solution = pd.DataFrame.transpose(
-            pd.DataFrame(data=[self.t, x, y, z], index=['t', 'x', 'y', 'z']))
-
+            for t in self.t:
+                inc = self.rk2(inc)
+                result = np.vstack((result,np.append(t, inc)))
+        elif order == 4:
+            for t in self.t:
+                inc = self.rk4(inc)
+                result = np.vstack((result,np.append(t, inc)))
+        self.solution = pd.DataFrame(result, columns=['t', 'x', 'y', 'z'])
         return self.solution
 
     def save(self, filename=None):
@@ -139,6 +111,21 @@ class Attractor(object):
     def plotz(self):
         """Generates 2d plot of z(t)."""
         plot.plot(self.solution['t'], self.solution['z'])
+        plot.show()
+    
+    def plotxy(self):
+        """Generates 2d plot of x(t)."""
+        plot.plot(self.solution['x'], self.solution['y'])
+        plot.show()
+    
+    def plotyz(self):
+        """Generates 2d plot of x(t)."""
+        plot.plot(self.solution['y'], self.solution['z'])
+        plot.show()
+    
+    def plotzx(self):
+        """Generates 2d plot of x(t)."""
+        plot.plot(self.solution['z'], self.solution['x'])
         plot.show()
 
     def plot3d(self):
